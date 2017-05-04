@@ -1,5 +1,4 @@
-
-(function() {
+(function () {
   'use strict';
 
   var weatherAPIUrlBase = 'https://publicdata-weather.firebaseio.com/';
@@ -30,14 +29,41 @@
       windSpeed: 1.52
     },
     daily: {
-      data: [
-        {icon: 'clear-day', temperatureMax: 55, temperatureMin: 34},
-        {icon: 'rain', temperatureMax: 55, temperatureMin: 34},
-        {icon: 'snow', temperatureMax: 55, temperatureMin: 34},
-        {icon: 'sleet', temperatureMax: 55, temperatureMin: 34},
-        {icon: 'fog', temperatureMax: 55, temperatureMin: 34},
-        {icon: 'wind', temperatureMax: 55, temperatureMin: 34},
-        {icon: 'partly-cloudy-day', temperatureMax: 55, temperatureMin: 34}
+      data: [{
+          icon: 'clear-day',
+          temperatureMax: 55,
+          temperatureMin: 34
+        },
+        {
+          icon: 'rain',
+          temperatureMax: 55,
+          temperatureMin: 34
+        },
+        {
+          icon: 'snow',
+          temperatureMax: 55,
+          temperatureMin: 34
+        },
+        {
+          icon: 'sleet',
+          temperatureMax: 55,
+          temperatureMin: 34
+        },
+        {
+          icon: 'fog',
+          temperatureMax: 55,
+          temperatureMin: 34
+        },
+        {
+          icon: 'wind',
+          temperatureMax: 55,
+          temperatureMin: 34
+        },
+        {
+          icon: 'partly-cloudy-day',
+          temperatureMax: 55,
+          temperatureMin: 34
+        }
       ]
     }
   };
@@ -50,29 +76,33 @@
    ****************************************************************************/
 
   /* Event listener for refresh button */
-  document.getElementById('butRefresh').addEventListener('click', function() {
+  document.getElementById('butRefresh').addEventListener('click', function () {
     app.updateForecasts();
   });
 
   /* Event listener for add new city button */
-  document.getElementById('butAdd').addEventListener('click', function() {
+  document.getElementById('butAdd').addEventListener('click', function () {
     // Open/show the add new city dialog
     app.toggleAddDialog(true);
   });
 
   /* Event listener for add city button in add city dialog */
-  document.getElementById('butAddCity').addEventListener('click', function() {
+  document.getElementById('butAddCity').addEventListener('click', function () {
     var select = document.getElementById('selectCityToAdd');
     var selected = select.options[select.selectedIndex];
     var key = selected.value;
     var label = selected.textContent;
     app.getForecast(key, label);
-    app.selectedCities.push({key: key, label: label});
+    app.selectedCities.push({
+      key: key,
+      label: label
+    });
+    app.saveSelectedCities(); //PWA
     app.toggleAddDialog(false);
   });
 
   /* Event listener for cancel button in add city dialog */
-  document.getElementById('butAddCancel').addEventListener('click', function() {
+  document.getElementById('butAddCancel').addEventListener('click', function () {
     app.toggleAddDialog(false);
   });
 
@@ -84,7 +114,7 @@
    ****************************************************************************/
 
   // Toggles the visibility of the add new city dialog.
-  app.toggleAddDialog = function(visible) {
+  app.toggleAddDialog = function (visible) {
     if (visible) {
       app.addDialog.classList.add('dialog-container--visible');
     } else {
@@ -94,7 +124,7 @@
 
   // Updates a weather card with the latest weather forecast. If the card
   // doesn't already exist, it's cloned from the template.
-  app.updateForecastCard = function(data) {
+  app.updateForecastCard = function (data) {
     var card = app.visibleCards[data.key];
     if (!card) {
       card = app.cardTemplate.cloneNode(true);
@@ -151,11 +181,11 @@
    ****************************************************************************/
 
   // Gets a forecast for a specific city and update the card with the data
-  app.getForecast = function(key, label) {
+  app.getForecast = function (key, label) {
     var url = weatherAPIUrlBase + key + '.json';
     // Make the XHR to get the data, then update the card
     var request = new XMLHttpRequest();
-    request.onreadystatechange = function() {
+    request.onreadystatechange = function () {
       if (request.readyState === XMLHttpRequest.DONE) {
         if (request.status === 200) {
           var response = JSON.parse(request.response);
@@ -170,13 +200,44 @@
   };
 
   // Iterate all of the cards and attempt to get the latest forecast data
-  app.updateForecasts = function() {
+  app.updateForecasts = function () {
     var keys = Object.keys(app.visibleCards);
-    keys.forEach(function(key) {
+    keys.forEach(function (key) {
       app.getForecast(key);
     });
-  }; 
+  };
 
   app.updateForecastCard(injectedForecast);
+
+  //PWA
+  app.saveSelectedCities = function () {
+    window.localforage.setItem('selectedCities', app.selectedCities);
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    window.localforage.getItem('selectedCities', function (err, cityList) {
+      if (cityList) {
+        app.selectedCities = cityList;
+        app.selectedCities.forEach(function (city) {
+          app.getForecast(city.key, city.label);
+        });
+      } else {
+        app.updateForecastCard(injectedForecast);
+        app.selectedCities = [{
+          key: injectedForecast.key,
+          label: injectedForecast.label
+        }];
+        app.saveSelectedCities();
+      }
+    });
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+     .register('/service-worker.js')
+     .then(function() { 
+        console.log('Service Worker Registered'); 
+      });
+  }
 
 })();
